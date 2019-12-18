@@ -33,9 +33,8 @@ fs.readFile("sa2.geojson", "utf8", function(error, sa2Data) {
     console.log("matching rent data to sa2s ...");
     newSa2s = [];
     sa2s.filter(function(sa2) {
-      console.log("checking " + sa2.properties.area + " ...");
       let areas = rentData.filter(function(d) {
-        return d[" area"] == sa2.properties.area;
+        return d.area == sa2.properties.area;
       });
       if (areas.length > 0) {
         areas.forEach(function(area) {
@@ -49,6 +48,8 @@ fs.readFile("sa2.geojson", "utf8", function(error, sa2Data) {
           };
         });
         newSa2s.push(sa2);
+      } else {
+        console.log(sa2.properties.area + " has no matches");
       }
     });
     newSa2s = {
