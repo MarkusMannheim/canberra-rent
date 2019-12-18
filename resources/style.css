@@ -1,0 +1,62 @@
+/* ABC fonts */
+@font-face {
+  font-family: "ABCSans Regular";
+  font-style: normal;
+  font-weight: normal;
+  src: local("ABCSans Regular"), url("./fonts/abcsans-regular.woff") format("woff");
+}
+@font-face {
+  font-family: "ABCSans RegularItalic";
+  font-style: normal;
+  font-weight: normal;
+  src: local("ABCSans RegularItalic"), url("./fonts/abcsans-regularitalic.woff") format("woff");
+}
+@font-face {
+  font-family: "ABCSans Light";
+  font-style: normal;
+  font-weight: normal;
+  src: local("ABCSans Light"), url("./fonts/abcsans-light.woff") format("woff");
+}
+@font-face {
+  font-family: "ABCSans Bold";
+  font-style: normal;
+  font-weight: normal;
+  src: local("ABCSans Bold"), url("./fonts/abcsans-bold.woff") format("woff");
+}
+@font-face {
+  font-family: "ABCSans Black";
+  font-style: normal;
+  font-weight: normal;
+  src: local("ABCSans Black"), url("./fonts/abcsans-black.woff") format("woff");
+}
+
+:root {
+  font-size: 1em;
+  font-family: "ABC Sans", sans-serif;
+}
+body {
+  margin: 0;
+  padding: 0;
+  opacity: 0;
+  position: fixed;
+  top: 0;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+#map, #svg {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: 100%;
+}
+.water {
+
+}
+.parkland {
+  
+}
