@@ -42,11 +42,12 @@ fs.readFile("sa2.geojson", "utf8", function(error, sa2Data) {
             q1: area.q1,
             q2: area.q2,
             q3: area.q3,
-            yr1: area.yr1,
+            yr1: area.years1,
             yr5: area.years5,
             yr10: area.years10
           };
         });
+        sa2.properties.area = sa2.properties.area.replace(" (ACT)", "");
         newSa2s.push(sa2);
       } else {
         console.log(sa2.properties.area + " has no matches");

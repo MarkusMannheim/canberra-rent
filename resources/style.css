@@ -91,3 +91,19 @@ h1, p {
 #narrative span {
   color: #00CFFF;
 }
+#legendGroup {
+  opacity: 0;
+}
+#legendGroup rect {
+  x: 15px;
+  height: 20px;
+  stroke: #1C1C1C;
+  fill: url(#legendGradient);
+}
+#xAxisGroup text {
+  fill: #1C1C1C;
+  font-size: .7rem;
+}
+#xAxisGroup .domain {
+  display: none;
+}
