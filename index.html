@@ -45,11 +45,13 @@
       <rect x="10" y="10" height="20"></rect>
       <g id="axisGroup"></g>
     </svg>
+    <div id="tip"></div>
     <script>
       // load data
       d3.json("./resources/actRent.topojson", function(error, data) {
         if (error) throw error;
         type = "units";
+        margin = { top: 30, bottom: 65, left: 30, right: 30 };
         rentData = topojson.feature(data, data.objects.areas);
         // set up MapBox engine
         mapboxgl.accessToken = "pk.eyJ1IjoibmV3cy1vbjFpbmUiLCJhIjoiR3FlZFZlVSJ9._30EFE9XYhQitqf4gzRG-g";
@@ -81,6 +83,8 @@
         selectorOptions = selector
           .selectAll(".option")
           .on("click", changeType);
+        // tooltip
+        tip = d3.select("#tip");
         // legend
         legend = d3.select("#legend");
         colours = d3.scaleSequential(d3.interpolateRdYlGn);
@@ -88,7 +92,8 @@
         axisGroup = d3.select("#axisGroup")
           .attr("transform", "translate(0, 30)");
         axis = d3.axisBottom(x)
-          .ticks(5, ".0%");
+          .ticks(5, ".0%")
+          .tickSizeOuter(0);
         // svg layer
         container = map.getCanvasContainer();
         svg = d3.select(container)
@@ -108,7 +113,9 @@
           .selectAll(".area")
             .data(rentData.features)
           .enter().append("path")
-            .classed("area", true);
+            .classed("area", true)
+            .on("mouseover", reveal)
+            .on("mouseout", hide);
         draw();
         // initial fade-in and zoom
         d3.select("body").transition()
@@ -116,7 +123,7 @@
           .style("opacity", 1);
         d3.timeout(function() {
           map.fitBounds(d3.geoBounds(rentData), {
-            padding: { top: 30, bottom: 65, left: 30, right: 30 }
+            padding: margin
           });
         }, 1500);
         // re-render SVGs upon movement
@@ -131,6 +138,7 @@
         path.projection(projection);
         svgGroup.selectAll(".area")
           .attr("d", path);
+        hide();
       }
       // recalculates D3 map projection when map moves
       function calcProjection() {
@@ -145,13 +153,23 @@
       }
       // if window is resized
       function windowResize() {
+        mapWidth = svg.node().getBoundingClientRect().width;
+        mapHeight = svg.node().getBoundingClientRect().height;
         legend.select("rect")
           .attr("width", legend.node().getBoundingClientRect().width - 20);
         x.range([10, legend.node().getBoundingClientRect().width - 10]);
       }
       // draw event
       function draw() {
-        colours.domain(d3.extent(rentData.features.filter(function(d) { return d.properties[type]; }), function(d) { return d.properties[type].inc == 0 ? null : d.properties[type].inc; }).reverse());
+        activeData = rentData
+          .features
+          .filter(function(d) {
+            return d.properties[type];
+          })
+          .filter(function(d) {
+            return d.properties[type].inc !== 0;
+          });
+        colours.domain(d3.extent(activeData, function(d) { return d.properties[type].inc; }).reverse());
         x.domain(colours.domain().reverse());
         axisGroup.transition()
           .duration(1500)
@@ -187,6 +205,32 @@
         d3.select(this)
           .classed("selected", true);
         draw();
+      }
+      // hide tool tip when hover out
+      function hide() {
+        tip.style("opacity", 0);
+      }
+      // reveal tool tip when hover over
+      function reveal(d) {
+        tip.style("opacity", 0)
+          .style("top", "0px") // reset position to tool tip for correct sizing
+          .style("left", "0px")
+          .html("<h1>" + d.properties[type].area.replace(" (ACT)", "") + "</h1>" // re-write tool tip content
+              + "<p>" + d3.format(".1%")(d.properties[type].inc) + " (average change p.a.)</p>");
+        // set location of tool tip to ensure it's always inside chart
+        let tipWidth = parseFloat(tip.style("width"));
+        let tipHeight = parseFloat(tip.style("height"));
+        tip.style("top", function() {
+            return path.centroid(d)[1] + 10 + tipHeight < mapHeight - margin.bottom ?
+              path.centroid(d)[1] + "px" :
+              (path.centroid(d)[1] - 20 - tipHeight) + "px";
+          })
+          .style("left", function() {
+            return path.centroid(d)[0] + 10 + tipWidth < mapWidth - margin.right ?
+              path.centroid(d)[0] + "px" :
+              (path.centroid(d)[0] - 20 - tipWidth) + "px";
+          })
+          .style("opacity", 1);
       }
     </script>
   </body>
