@@ -1,36 +1,51 @@
 var d3 = require("d3"),
     fs = require("fs");
 
-console.log("reading ACT mesh ...");
-fs.readFile("meshAct.geojson", "utf8", function(error, actData) {
-  console.log("parsing ACT mesh ...");
-  actMesh = JSON.parse(actData);
-  console.log("reading NSW mesh ...");
-  fs.readFile("meshNsw.geojson", "utf8", function(error, nswData) {
-    console.log("parsing NSW mesh ...");
-    nswMesh = JSON.parse(nswData);
-    console.log("calculating ACT bounds ...");
-    centre = [149.126944, -35.293056];
-    mesh = actMesh.features.concat(nswMesh.features);
-    console.log("cleaning mesh ...");
-    mesh = mesh.filter(function(d) { return d.properties.AREASQKM16 > 0 && (d.properties.MB_CAT16 == "Water" || d.properties.MB_CAT16 == "Parkland"); });
-    mesh.forEach(function(d) {
-      d.properties = { class: d.properties.MB_CAT16 };
+console.log("parsing geodata ...");
+fs.readFile("sa2.geojson", "utf8", function(error, sa2Data) {
+  sa2Data = JSON.parse(sa2Data)
+    .features;
+  console.log("parsing rent data ...");
+  fs.readFile("rentData.csv", "utf8", function(error, rentData) {
+    rentData = d3.csvParse(rentData)
+      .map(function(d) {
+        return {
+          area: d.area,
+          type: d.type,
+          median: Math.round(+d.median),
+          inc: Math.round(+d.inc * 1000) / 1000
+        };
+      });
+    console.log("filtering geodata ...");
+    actData = [];
+    sa2Data.forEach(function(sa2) {
+      let matches = rentData.filter(function(match) {
+        return match.area == sa2.properties.SA2_NAME16;
+      });
+      if (matches.length > 0) {
+        let properties = {};
+        matches.forEach(function(match) {
+          properties[match.type] = {
+            area: match.area,
+            median: match.median,
+            years1: match.years1,
+            years5: match.years5,
+            years10: match.years10,
+            inc: match.inc
+          };
+        });
+        sa2.properties = properties;
+        console.log("adding " + matches[0].area + " ...");
+        actData.push(sa2);
+      }
     });
-    console.log("removing distant mesh ...");
-    newMesh = [];
-    mesh.forEach(function(d) {
-      let bounds = d3.geoBounds(d);
-      if (bounds[0][0] > centre[0] - .5 && bounds[1][0] < centre[0] + .5 && bounds[0][1] > centre[1] - .5 && bounds[1][1] < centre[1] + .5) newMesh.push(d);
-    });
-    set = new Set(newMesh.map(function(d) { return d.properties.class; }));
-    console.log(set);
-    newMesh = {
+    console.log("writing actRent.geojson ...");
+    actRent = {
       type: "FeatureCollection",
-      features: newMesh
+      features: actData
     };
-    fs.writeFile("mesh.geojson", JSON.stringify(newMesh), function(error) {
-      console.log("mesh.geojson written");
+    fs.writeFile("actRent.geojson", JSON.stringify(actRent), function(error) {
+      console.log("actRent.geojson written");
     });
   });
 });
