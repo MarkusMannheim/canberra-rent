@@ -39,9 +39,11 @@ body {
 #legend {
   position: fixed;
   width: 75%;
-  height: 55px;
   bottom: 0;
   background-color: rgba(255, 255, 255, .75);
+}
+#legend rect {
+  fill: url(#gradient);
 }
 #selector {
   position: fixed;
@@ -80,19 +82,20 @@ body {
   text-align: center;
   padding: 5px;
   border-radius: 10px;
-  background-color: rgba(255, 255, 255, .85);
+  background-color: rgb(28, 28, 28, .8);
   pointer-events: none;
-  color: #1C1C1C;
+  color: white;
 }
 #tip p, #tip h1 {
   margin: 0;
   padding: 0;
 }
 #tip h1 {
-  font-size: 1rem;
+  font-size: .9rem;
 }
 #tip p {
   font-family: "ABCSans Regular", sans-serif;
+  font-size: .8rem;
 }
 
 @media only screen and (min-width: 500px) {

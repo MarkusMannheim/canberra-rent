@@ -12,13 +12,14 @@
     <!-- my stuff -->
     <meta charset="utf-8">
     <title>Canberra rents</title>
-    <meta name="description" content="Rental changes in Canberra suburbs (statistical area level 2).">
+    <meta name="description" content="Rents in Canberra suburbs, November 2019 (statistical area level 2).">
     <meta name="keywords" content="canberra, act, rental, rental, prices, tenants, landlords, rents">
     <meta name="author" content="Markus Mannheim">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- Initial scripts -->
     <script src="https://d3js.org/d3.v4.min.js"></script>
     <script src="https://d3js.org/topojson.v3.min.js"></script>
+    <script src="https://d3js.org/d3-scale.v3.min.js"></script>
     <script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
     <script src="https://api.tiles.mapbox.com/mapbox-gl-js/v1.5.0/mapbox-gl.js"></script>
     <link href="https://api.tiles.mapbox.com/mapbox-gl-js/v1.5.0/mapbox-gl.css" rel="stylesheet">
@@ -26,7 +27,7 @@
     <link href="./resources/abcLogo64.png" rel="icon">
     <!-- Page data for scrapers -->
     <meta property="og:title" content="Canberra rents">
-    <meta property="og:description" content="Rental changes in Canberra suburbs (statistical area level 2).">
+    <meta property="og:description" content="Rents in Canberra suburbs, November 2019 (statistical area level 2).">
     <meta property="og:image" content="https://markusmannheim.github.io/canberra-rent/rentIncreases.jpg">
     <meta property="og:url" content="https://markusmannheim.github.io/canberra-rent/increases.html">
     <meta property="og:type" content="website">
@@ -92,18 +93,18 @@
         // legend
         legend = d3.select("#legend")
           .style("height", margin.bottom - 10 + "px");
-        colours = d3.scaleSequential(d3.interpolateRdYlGn);
+        colours = d3.scaleSequentialSqrt(d3.interpolateRdYlGn);
         legend.select("#gradient")
           .selectAll("stop")
             .data(d3.range(0, 110, 10))
           .enter().append("stop")
             .attr("offset", function(d) { return d + "%"; })
             .attr("style", function(d) { return "stop-color: " + colours((100 - d) / 100) + "; stop-opacity: 1;"; });
-        x = d3.scaleLinear();
+        x = d3.scaleSqrt();
         axisGroup = d3.select("#axisGroup")
           .attr("transform", "translate(0, 25)");
         axis = d3.axisBottom(x)
-          .ticks(5, ".0%")
+          .ticks(5, "$,.0f")
           .tickSizeOuter(0);
         // svg layer
         container = map.getCanvasContainer();
@@ -179,9 +180,9 @@
             return d.properties[type];
           })
           .filter(function(d) {
-            return d.properties[type].inc !== 0;
+            return d.properties[type].median !== 0;
           });
-        colours.domain(d3.extent(activeData, function(d) { return d.properties[type].inc; }).reverse());
+        colours.domain(d3.extent(activeData, function(d) { return d.properties[type].median; }).reverse());
         x.domain(colours.domain().reverse());
         axisGroup.transition()
           .duration(1500)
@@ -190,7 +191,7 @@
             if (!d.properties[type]) {
               return false;
             } else {
-              return d.properties[type].inc == 0 ? false : true;
+              return d.properties[type].median == 0 ? false : true;
             }
           })
           .transition()
@@ -199,14 +200,14 @@
             if (!d.properties[type]) {
               return "rgba(0, 0, 0, 0)";
             } else {
-              return d.properties[type].inc == 0 ? "rgba(0, 0, 0, 0)" : colours(d.properties[type].inc);
+              return d.properties[type].median == 0 ? "rgba(0, 0, 0, 0)" : colours(d.properties[type].median);
             }
           })
           .style("stroke", function(d) {
             if (!d.properties[type]) {
               return "rgba(0, 0, 0, 0)";
             } else {
-              return d.properties[type].inc == 0 ? "rgba(0, 0, 0, 0)" : "#1C1C1C";
+              return d.properties[type].median == 0 ? "rgba(0, 0, 0, 0)" : "#1C1C1C";
             }
           });
       }
@@ -228,7 +229,7 @@
           .style("top", "0px") // reset position to tool tip for correct sizing
           .style("left", "0px")
           .html("<h1>" + d.properties[type].area.replace(" (ACT)", "") + "</h1>" // re-write tool tip content
-              + "<p>" + d3.format(".1%")(d.properties[type].inc) + " p.a. (avg. change for " + type + ")</p>");
+              + "<p>" + d3.format("$,.0f")(d.properties[type].median) + "/wk for " + type + "</p>");
         // set location of tool tip to ensure it's always inside chart
         let tipWidth = parseFloat(tip.style("width"));
         let tipHeight = parseFloat(tip.style("height"));
