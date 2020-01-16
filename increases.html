@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-155991615-1"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'UA-155991615-1');
+    </script>
+    <!-- my stuff -->
+    <meta charset="utf-8">
+    <title>Canberra rents</title>
+    <meta name="description" content="Rental changes in Canberra suburbs (statistical area level 2).">
+    <meta name="keywords" content="canberra, act, rental, rental, prices, tenants, landlords, rents">
+    <meta name="author" content="Markus Mannheim">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Initial scripts -->
+    <script src="https://d3js.org/d3.v4.min.js"></script>
+    <script src="https://d3js.org/topojson.v3.min.js"></script>
+    <script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
+    <script src="https://api.tiles.mapbox.com/mapbox-gl-js/v1.5.0/mapbox-gl.js"></script>
+    <link href="https://api.tiles.mapbox.com/mapbox-gl-js/v1.5.0/mapbox-gl.css" rel="stylesheet">
+    <link href="./resources/style.css" rel="stylesheet">
+    <link href="./resources/abcLogo64.png" rel="icon">
+    <!-- Page data for scrapers -->
+    <meta property="og:title" content="Canberra rents">
+    <meta property="og:description" content="Rental changes in Canberra suburbs (statistical area level 2).">
+    <meta property="og:image" content="https://markusmannheim.github.io/canberra-rent/rentIncreases.jpg">
+    <meta property="og:url" content="https://markusmannheim.github.io/canberra-rent/increases.html">
+    <meta property="og:type" content="website">
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:site" content="@MarkusMannheim">
+    <meta property="twitter:creator" content="@MarkusMannheim">
+  </head>
+  <body>
+    <!-- Initial page layout -->
+    <div id="map"></div>
+    <div id="selector">
+      <div class="option selected">UNITS</div>
+      <div class="option">HOUSES</div>
+    </div>
+    <svg id="legend">
+      <defs>
+        <linearGradient id="gradient" x1="0%" x2="100%" y1="0%" y2="0%">
+        </linearGradient>
+      </defs>
+      <rect x="5" y="5" height="20"></rect>
+      <g id="axisGroup"></g>
+    </svg>
+    <div id="tip"></div>
+    <script>
+      // load data
+      d3.json("./resources/actRent.topojson", function(error, data) {
+        if (error) throw error;
+        type = "units";
+        margin = { top: 30, bottom: 55, left: 30, right: 30 };
+        rentData = topojson.feature(data, data.objects.areas);
+        // set up MapBox engine
+        mapboxgl.accessToken = "pk.eyJ1IjoibmV3cy1vbjFpbmUiLCJhIjoiR3FlZFZlVSJ9._30EFE9XYhQitqf4gzRG-g";
+        map = new mapboxgl.Map({
+          container: "map",
+          style: "mapbox://styles/mapbox/light-v10",
+          center: [149.126944, -35.293056],
+          attributionControl: false,
+          zoom: 4,
+          minZoom: 4,
+          maxZoom: 12,
+          pitchWithRotate: false,
+          dragRotate: false,
+          touchZoomRotate: false
+        });
+        // add navigation and custom attribution
+        map.addControl(new mapboxgl.AttributionControl({
+            compact: true
+          }))
+          .addControl(new mapboxgl.NavigationControl({
+            showCompass: false
+          }));
+        map.on("load", function() {
+          let attribution = d3.select(".mapboxgl-ctrl-attrib-inner");
+          attribution.html("&copy; CoreLogic | " + attribution.html());
+        });
+        // selector
+        selector = d3.select("#selector");
+        selectorOptions = selector
+          .selectAll(".option")
+          .on("click", changeType);
+        // tooltip
+        tip = d3.select("#tip");
+        // legend
+        legend = d3.select("#legend")
+          .style("height", margin.bottom - 10 + "px");
+        colours = d3.scaleSequential(d3.interpolateRdYlGn);
+        legend.select("#gradient")
+          .selectAll("stop")
+            .data(d3.range(0, 110, 10))
+          .enter().append("stop")
+            .attr("offset", function(d) { return d + "%"; })
+            .attr("style", function(d) { return "stop-color: " + colours((100 - d) / 100) + "; stop-opacity: 1;"; });
+        x = d3.scaleLinear();
+        axisGroup = d3.select("#axisGroup")
+          .attr("transform", "translate(0, 25)");
+        axis = d3.axisBottom(x)
+          .ticks(5, ".0%")
+          .tickSizeOuter(0);
+        // svg layer
+        container = map.getCanvasContainer();
+        svg = d3.select(container)
+          .append("svg")
+            .attr("id", "svg");
+        svgGroup = svg
+          .append("g")
+            .attr("id", "svgGroup");
+        // map calculations
+        projection = calcProjection();
+        path = d3.geoPath();
+        // if window is resized
+        window.addEventListener("resize", windowResize);
+        windowResize();
+        // draw areas
+        areas = svgGroup
+          .selectAll(".area")
+            .data(rentData.features)
+          .enter().append("path")
+            .classed("area", true)
+            .on("mouseover", reveal)
+            .on("mouseout", hide);
+        draw();
+        // initial fade-in and zoom
+        d3.select("body").transition()
+          .duration(1500)
+          .style("opacity", 1);
+        d3.timeout(function() {
+          map.fitBounds(d3.geoBounds(rentData), {
+            padding: margin
+          });
+        }, 500);
+        // re-render SVGs upon movement
+        map.on("viewreset", render)
+          .on("move", render)
+          .on("move", render);
+        render();
+      });
+      // re-renders SVG when map moves
+      function render() {
+        projection = calcProjection();
+        path.projection(projection);
+        svgGroup.selectAll(".area")
+          .attr("d", path);
+        hide();
+      }
+      // recalculates D3 map projection when map moves
+      function calcProjection() {
+        bbox = document.body.getBoundingClientRect();
+        center = map.getCenter();
+        zoom = map.getZoom();
+        scale = 256 / Math.PI * Math.pow(2, zoom);
+        return d3.geoMercator()
+          .center([center.lng, center.lat])
+          .translate([bbox.width / 2, bbox.height / 2])
+          .scale(scale);
+      }
+      // if window is resized
+      function windowResize() {
+        mapWidth = svg.node().getBoundingClientRect().width;
+        mapHeight = svg.node().getBoundingClientRect().height;
+        legend.select("rect")
+          .attr("width", legend.node().getBoundingClientRect().width - 10);
+        x.range([5, legend.node().getBoundingClientRect().width - 5]);
+        axisGroup.call(axis);
+      }
+      // draw event
+      function draw() {
+        activeData = rentData
+          .features
+          .filter(function(d) {
+            return d.properties[type];
+          })
+          .filter(function(d) {
+            return d.properties[type].inc !== 0;
+          });
+        colours.domain(d3.extent(activeData, function(d) { return d.properties[type].inc; }).reverse());
+        x.domain(colours.domain().reverse());
+        axisGroup.transition()
+          .duration(1500)
+          .call(axis);
+        areas.classed("selected", function(d) {
+            if (!d.properties[type]) {
+              return false;
+            } else {
+              return d.properties[type].inc == 0 ? false : true;
+            }
+          })
+          .transition()
+          .duration(1500)
+          .style("fill", function(d) {
+            if (!d.properties[type]) {
+              return "rgba(0, 0, 0, 0)";
+            } else {
+              return d.properties[type].inc == 0 ? "rgba(0, 0, 0, 0)" : colours(d.properties[type].inc);
+            }
+          })
+          .style("stroke", function(d) {
+            if (!d.properties[type]) {
+              return "rgba(0, 0, 0, 0)";
+            } else {
+              return d.properties[type].inc == 0 ? "rgba(0, 0, 0, 0)" : "#1C1C1C";
+            }
+          });
+      }
+      // if user changes houseing type
+      function changeType(d) {
+        type = d3.select(this).text().toLowerCase();
+        selectorOptions.classed("selected", false);
+        d3.select(this)
+          .classed("selected", true);
+        draw();
+      }
+      // hide tool tip when hover out
+      function hide() {
+        tip.style("opacity", 0);
+      }
+      // reveal tool tip when hover over
+      function reveal(d) {
+        tip.style("opacity", 0)
+          .style("top", "0px") // reset position to tool tip for correct sizing
+          .style("left", "0px")
+          .html("<h1>" + d.properties[type].area.replace(" (ACT)", "") + "</h1>" // re-write tool tip content
+              + "<p>" + d3.format(".1%")(d.properties[type].inc) + " p.a. (average change)</p>");
+        // set location of tool tip to ensure it's always inside chart
+        let tipWidth = parseFloat(tip.style("width"));
+        let tipHeight = parseFloat(tip.style("height"));
+        tip.style("top", function() {
+            return path.centroid(d)[1] + (tipHeight / 2) + 10 > mapHeight - margin.bottom ?
+              (mapHeight - margin.bottom - (tipHeight / 2) - 10) + "px":
+              path.centroid(d)[1] - (tipHeight / 2) - 10 < margin.top ?
+              (margin.top + 10) + "px":
+              (path.centroid(d)[1] - (tipHeight / 2) + "px");
+          })
+          .style("left", function() {
+            return path.centroid(d)[0] + (tipWidth / 2) + 10 > mapWidth - margin.right ?
+              (mapWidth - margin.right - (tipWidth / 2) - 10) + "px":
+              path.centroid(d)[0] - (tipWidth / 2) - 10 < margin.left ?
+              (margin.left + 10) + "px":
+              (path.centroid(d)[0] - (tipWidth / 2) + "px");
+          })
+          .style("opacity", 1);
+      }
+    </script>
+  </body>
+</html>
