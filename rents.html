@@ -19,11 +19,9 @@
     <!-- Initial scripts -->
     <script src="https://d3js.org/d3.v4.min.js"></script>
     <script src="https://d3js.org/topojson.v3.min.js"></script>
-    <script src="https://d3js.org/d3-scale.v3.min.js"></script>
-    <script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
     <script src="https://api.tiles.mapbox.com/mapbox-gl-js/v1.5.0/mapbox-gl.js"></script>
     <link href="https://api.tiles.mapbox.com/mapbox-gl-js/v1.5.0/mapbox-gl.css" rel="stylesheet">
-    <link href="./resources/style.css?v1.2" rel="stylesheet">
+    <link href="./resources/style.css?v1.3" rel="stylesheet">
     <link href="./resources/abcLogo64.png" rel="icon">
     <!-- Page data for scrapers -->
     <meta property="og:title" content="Canberra rents">
@@ -93,13 +91,16 @@
         // legend
         legend = d3.select("#legend")
           .style("height", margin.bottom - 10 + "px");
-        colours = d3.scaleSequentialSqrt(d3.interpolateRdYlGn);
+        colours = d3.scaleLinear()
+          .range(["#009CBF", "white", "#F75F00"])
+          .domain([0, 50, 100])
+          .interpolate(d3.interpolateRgb);
         legend.select("#gradient")
           .selectAll("stop")
             .data(d3.range(0, 110, 10))
           .enter().append("stop")
             .attr("offset", function(d) { return d + "%"; })
-            .attr("style", function(d) { return "stop-color: " + colours((100 - d) / 100) + "; stop-opacity: 1;"; });
+            .attr("style", function(d) { return "stop-color: " + colours(d) + "; stop-opacity: 1;"; });
         x = d3.scaleSqrt();
         axisGroup = d3.select("#axisGroup")
           .attr("transform", "translate(0, 25)");
@@ -182,8 +183,8 @@
           .filter(function(d) {
             return d.properties[type].median !== 0;
           });
-        colours.domain(d3.extent(activeData, function(d) { return d.properties[type].median; }).reverse());
-        x.domain(colours.domain().reverse());
+        x.domain(d3.extent(activeData, function(d) { return d.properties[type].median; }));
+        colours.domain([x.domain()[0], x.invert(d3.mean(x.range())), x.domain()[1]]);
         axisGroup.transition()
           .duration(1500)
           .call(axis);
