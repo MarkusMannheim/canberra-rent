@@ -18,6 +18,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- Initial scripts -->
     <script src="https://d3js.org/d3.v4.min.js"></script>
+    <script src="./config.js"></script>
     <script src="https://d3js.org/topojson.v3.min.js"></script>
     <script src="https://api.tiles.mapbox.com/mapbox-gl-js/v1.5.0/mapbox-gl.js"></script>
     <link href="https://api.tiles.mapbox.com/mapbox-gl-js/v1.5.0/mapbox-gl.css" rel="stylesheet">
@@ -57,7 +58,7 @@
         margin = { top: 30, bottom: 55, left: 30, right: 30 };
         rentData = topojson.feature(data, data.objects.areas);
         // set up MapBox engine
-        mapboxgl.accessToken = "pk.eyJ1IjoibmV3cy1vbjFpbmUiLCJhIjoiR3FlZFZlVSJ9._30EFE9XYhQitqf4gzRG-g";
+        mapboxgl.accessToken = config.mapBoxKey;
         map = new mapboxgl.Map({
           container: "map",
           style: "mapbox://styles/mapbox/light-v10",
